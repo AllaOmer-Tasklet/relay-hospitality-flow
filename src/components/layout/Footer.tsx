@@ -56,7 +56,7 @@ const Footer = () => {
             © {new Date().getFullYear()} Tasklet. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            Relay is the first product from Tasklet — automation systems for growing businesses.
+            Relay by Tasklet — trusted automation systems for the hospitality industry.
           </p>
         </div>
       </div>
