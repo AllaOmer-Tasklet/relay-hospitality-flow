@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
 import Testimonials from "@/components/home/Testimonials";
+import ClientLogos from "@/components/home/ClientLogos";
 import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
 
 const Index = () => {
@@ -47,6 +48,9 @@ const Index = () => {
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,hsl(var(--amber)/0.1),transparent_50%)]"></div>
       </section>
+
+      {/* Client Logos */}
+      <ClientLogos />
 
       {/* Problem Section */}
       <section className="border-t border-border">
