@@ -56,7 +56,7 @@ const Footer = () => {
             © {new Date().getFullYear()} Tasklet. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            Relay by Tasklet — trusted automation systems for the hospitality industry.
+            Relay is built by Tasklet, a team that designs automation systems for revenue-critical workflows.
           </p>
         </div>
       </div>
