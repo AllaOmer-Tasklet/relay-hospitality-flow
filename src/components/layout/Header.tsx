@@ -22,9 +22,7 @@ const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">T</span>
-          </div>
+          <span className="text-2xl font-bold text-secondary">&lt;/&gt;</span>
           <span className="font-display text-xl font-bold text-foreground">Tasklet</span>
         </Link>
 
