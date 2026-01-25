@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
+import Testimonials from "@/components/home/Testimonials";
 import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
 
 const Index = () => {
@@ -176,6 +177,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Testimonials */}
+      <Testimonials />
 
       {/* Final CTA */}
       <section className="border-t border-border bg-muted/30">
