@@ -175,11 +175,11 @@ const Contact = () => {
                   Reach out directly and we'll get back to you within 24 hours.
                 </p>
                 <a
-                  href="mailto:hello@tasklet.io"
+                  href="mailto:contact@tasklet.uk"
                   className="inline-flex items-center gap-2 text-accent hover:underline font-medium"
                 >
                   <Mail className="h-4 w-4" />
-                  hello@tasklet.io
+                  contact@tasklet.uk
                 </a>
               </div>
             </div>
