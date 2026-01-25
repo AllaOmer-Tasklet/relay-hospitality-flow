@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
 import Testimonials from "@/components/home/Testimonials";
-import RelayWorkflow from "@/components/home/RelayWorkflow";
 import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
 
 const Index = () => {
@@ -150,9 +149,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Relay Workflow */}
-      <RelayWorkflow />
 
       {/* Who It's For */}
       <section className="border-t border-border">
