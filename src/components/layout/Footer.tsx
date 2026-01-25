@@ -8,9 +8,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">T</span>
-              </div>
+              <span className="text-2xl font-bold text-secondary">&lt;/&gt;</span>
               <span className="font-display text-xl font-bold text-foreground">Tasklet</span>
             </Link>
             <p className="text-muted-foreground max-w-sm">
