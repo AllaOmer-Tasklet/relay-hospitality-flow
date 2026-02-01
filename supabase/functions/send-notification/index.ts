@@ -13,7 +13,7 @@ interface NotificationRequest {
   message?: string;
 }
 
-const NOTIFICATION_EMAIL = "contact@tasklet.uk";
+const NOTIFICATION_EMAIL = "alla@tasklet.uk";
 
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
