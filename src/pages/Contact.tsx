@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import Layout from "@/components/layout/Layout";
 import { Mail, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contact = () => {
   const { toast } = useToast();
@@ -26,22 +27,42 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          type: "contact_form",
+          email: formData.email,
+          name: formData.name,
+          venueName: formData.venueName,
+          venueType: formData.venueType,
+          message: formData.message,
+        },
+      });
 
-    toast({
-      title: "Message sent!",
-      description: "We'll be in touch within 24 hours.",
-    });
+      if (error) throw error;
 
-    setFormData({
-      name: "",
-      email: "",
-      venueName: "",
-      venueType: "",
-      message: "",
-    });
-    setIsSubmitting(false);
+      toast({
+        title: "Message sent!",
+        description: "We'll be in touch within 24 hours.",
+      });
+
+      setFormData({
+        name: "",
+        email: "",
+        venueName: "",
+        venueType: "",
+        message: "",
+      });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        title: "Something went wrong",
+        description: "Please try again or email us directly at contact@tasklet.uk",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const emailSchema = z.string().trim().email({ message: "Please enter a valid email" }).max(255);
@@ -27,15 +28,31 @@ const SimpleEmailCapture = () => {
 
     setIsSubmitting(true);
     
-    // Simulate submission - replace with actual backend call when ready
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setIsSubmitted(true);
-    setIsSubmitting(false);
-    toast({
-      title: "Thanks!",
-      description: "We'll be in touch soon.",
-    });
+    try {
+      const { error } = await supabase.functions.invoke("send-notification", {
+        body: {
+          type: "email_capture",
+          email: result.data,
+        },
+      });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      toast({
+        title: "Thanks!",
+        description: "We'll be in touch soon.",
+      });
+    } catch (error) {
+      console.error("Error submitting email:", error);
+      toast({
+        title: "Something went wrong",
+        description: "Please try again or email us directly.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
