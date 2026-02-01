@@ -1,6 +1,3 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -18,7 +15,7 @@ interface NotificationRequest {
 
 const NOTIFICATION_EMAIL = "contact@tasklet.uk";
 
-const handler = async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -29,7 +26,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    const resend = new Resend(resendApiKey);
     const data: NotificationRequest = await req.json();
 
     if (!data.email) {
@@ -60,14 +56,28 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Invalid notification type");
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "Relay <onboarding@resend.dev>",
-      to: [NOTIFICATION_EMAIL],
-      subject,
-      html: htmlContent,
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Relay <onboarding@resend.dev>",
+        to: [NOTIFICATION_EMAIL],
+        subject,
+        html: htmlContent,
+      }),
     });
 
-    console.log("Notification email sent:", emailResponse);
+    const result = await emailResponse.json();
+
+    if (!emailResponse.ok) {
+      console.error("Resend API error:", result);
+      throw new Error(result.message || "Failed to send email");
+    }
+
+    console.log("Notification email sent:", result);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -84,6 +94,4 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   }
-};
-
-serve(handler);
+});
