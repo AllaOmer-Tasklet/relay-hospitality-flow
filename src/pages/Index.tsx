@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
 import Testimonials from "@/components/home/Testimonials";
 import LiveDeployments from "@/components/home/LiveDeployments";
+import HowItWorksSimple from "@/components/home/HowItWorksSimple";
+import SimpleEmailCapture from "@/components/home/SimpleEmailCapture";
 import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
 
 const Index = () => {
@@ -98,6 +100,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* How It Works - Simple Outcomes */}
+      <HowItWorksSimple />
+
       {/* Solution Section */}
       <section className="bg-primary text-primary-foreground">
         <div className="container py-20">
@@ -184,6 +189,9 @@ const Index = () => {
 
       {/* Testimonials */}
       <Testimonials />
+
+      {/* Simple Email Capture */}
+      <SimpleEmailCapture />
 
       {/* Final CTA */}
       <section className="border-t border-border bg-muted/30">
