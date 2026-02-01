@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
-import Testimonials from "@/components/home/Testimonials";
 import LiveDeployments from "@/components/home/LiveDeployments";
 import HowItWorksSimple from "@/components/home/HowItWorksSimple";
 import SimpleEmailCapture from "@/components/home/SimpleEmailCapture";
@@ -187,8 +186,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <Testimonials />
+      {/* Simple Email Capture */}
 
       {/* Simple Email Capture */}
       <SimpleEmailCapture />
