@@ -14,7 +14,7 @@ const About = () => {
               About Tasklet
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              We build automation systems that work. No buzzwords, no complexity — just tools that handle the work your team doesn't have time for.
+              We build simple systems that catch enquiries and reduce missed bookings for independent hospitality venues.
             </p>
           </div>
         </div>
@@ -30,13 +30,13 @@ const About = () => {
             </h2>
             <div className="prose prose-lg text-muted-foreground space-y-4">
               <p>
-                We started Tasklet because we saw the same pattern everywhere: small and mid-sized businesses drowning in repetitive work that should be automated, but stuck with tools built for enterprises.
+                Independent hotels and event venues lose bookings every week — not because they're bad at hospitality, but because enquiries slip through the cracks. Emails go unanswered. Follow-ups don't happen. Revenue walks out the door.
               </p>
               <p>
-                The automation tools on the market are either too simple (they break when things get real) or too complex (you need a developer to set them up). There's nothing in between.
+                The tools on the market are either too simple (they break when things get real) or too complex (you need a developer to set them up). There's nothing in between for venues that just want the problem solved.
               </p>
               <p>
-                Tasklet builds automation systems that are powerful enough to handle real workflows, but simple enough that you don't need to hire someone to manage them.
+                Tasklet installs enquiry capture and follow-up systems that work quietly in the background — catching leads, qualifying them, and following up until you get an answer.
               </p>
             </div>
           </div>
@@ -54,10 +54,10 @@ const About = () => {
             <div className="space-y-8">
               <div>
                 <h3 className="font-semibold text-lg text-foreground mb-2">
-                  We focus on specific problems
+                  We focus on enquiry capture
                 </h3>
                 <p className="text-muted-foreground">
-                  Instead of building a platform that does everything badly, we build products that solve one problem really well. Relay is our first: enquiry capture and follow-up for hospitality venues.
+                  Instead of building a platform that does everything badly, we solve one problem really well: catching and following up leads so venues stop losing bookings.
                 </p>
               </div>
 
@@ -72,10 +72,10 @@ const About = () => {
 
               <div>
                 <h3 className="font-semibold text-lg text-foreground mb-2">
-                  We measure outcomes
+                  We measure bookings, not efficiency
                 </h3>
                 <p className="text-muted-foreground">
-                  We're not interested in "time saved" or "efficiency gains." We care about real results: leads captured, revenue protected, opportunities converted.
+                  We're not interested in "time saved" or "productivity gains." We care about real results: leads captured, follow-ups completed, bookings recovered.
                 </p>
               </div>
             </div>

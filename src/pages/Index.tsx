@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/layout/Layout";
 import Testimonials from "@/components/home/Testimonials";
+import LiveDeployments from "@/components/home/LiveDeployments";
 import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
 
 const Index = () => {
@@ -19,12 +20,12 @@ const Index = () => {
 
             {/* Headline */}
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-              Every missed enquiry is a booking you'll never get back
+              Stop Missing Enquiries. Capture Bookings Automatically.
             </h1>
 
             {/* Subheadline */}
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-              Relay captures, qualifies, and follows up on every enquiry for your hotel, venue, or restaurant — automatically. No more leads slipping through the cracks.
+              A done-for-you enquiry capture and follow-up system for independent hotels and event venues. No missed leads, no manual chasing.
             </p>
 
             {/* CTAs */}
@@ -47,6 +48,9 @@ const Index = () => {
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,hsl(var(--amber)/0.1),transparent_50%)]"></div>
       </section>
+
+      {/* Live Deployments - Social Proof */}
+      <LiveDeployments />
 
       {/* Problem Section */}
       <section className="border-t border-border">
