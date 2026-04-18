@@ -434,6 +434,18 @@ const Index = () => {
         </div>
       </section>
 
+      {/* SECTION 6.5 — Human handoff reassurance */}
+      <section className="py-20 md:py-28">
+        <div className="container max-w-2xl text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4 text-balance">
+            Built to know when to step back.
+          </h2>
+          <p className="text-base md:text-lg text-muted-foreground text-balance leading-relaxed">
+            Not every enquiry needs AI. The system recognises when a conversation needs a human — and hands it off instantly. Your team stays in control of the moments that matter.
+          </p>
+        </div>
+      </section>
+
       {/* SECTION 7 — CTA */}
       <section ref={ctaRef} className="pt-24 md:pt-32 pb-12 md:pb-16 border-t border-border">
         <div className="container max-w-2xl text-center">
