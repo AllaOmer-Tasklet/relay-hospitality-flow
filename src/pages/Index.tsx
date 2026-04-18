@@ -106,6 +106,7 @@ const Index = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [formEnquiries, setFormEnquiries] = useState<number>(100);
@@ -120,7 +121,7 @@ const Index = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !businessType.trim()) {
+    if (!name.trim() || !businessName.trim() || !email.trim() || !businessType.trim()) {
       toast.error("Please fill in every field.");
       return;
     }
@@ -128,6 +129,7 @@ const Index = () => {
 
     const payload = {
       name: name.trim(),
+      businessName: businessName.trim(),
       email: email.trim(),
       monthlyEnquiries: Number(formEnquiries) || 0,
       businessType: businessType.trim(),
@@ -149,6 +151,7 @@ const Index = () => {
       body: {
         type: "audit_request",
         name: payload.name,
+        businessName: payload.businessName,
         email: payload.email,
         businessType: payload.businessType,
         monthlyEnquiries: payload.monthlyEnquiries,
@@ -427,6 +430,12 @@ const Index = () => {
                 onChange={setName}
                 placeholder="Your name"
                 autoFocus
+              />
+              <Field
+                label="Business name"
+                value={businessName}
+                onChange={setBusinessName}
+                placeholder="e.g. The Grand Hotel, Smith & Co Estate Agents"
               />
               <Field
                 label="Business email"
