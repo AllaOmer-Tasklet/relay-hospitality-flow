@@ -202,12 +202,14 @@ const Index = () => {
             <img src={taskletIcon} alt="" className="h-6 w-auto" />
             <span className="text-[18px] font-bold leading-none text-foreground">Tasklet</span>
           </a>
-          <button
-            onClick={() => scrollTo(ctaRef)}
+          <a
+            href="https://cal.com/alla-omer-bgvvao/enquiry-audit"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-sm font-medium text-gold hover:text-gold-soft transition-colors"
           >
             Book a call
-          </button>
+          </a>
         </div>
       </header>
 
