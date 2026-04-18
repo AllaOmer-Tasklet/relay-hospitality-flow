@@ -12,6 +12,26 @@ function formatGBP(n: number) {
   return "£" + Math.round(n).toLocaleString("en-GB");
 }
 
+/* Add deterministic pseudo-random pence (0-99) based on the integer pounds
+   so figures look computed, not estimated. Same input → same pence. */
+function jitterPence(pounds: number) {
+  const base = Math.round(pounds);
+  if (base <= 0) return 0;
+  const pence = ((base * 2654435761) >>> 0) % 100;
+  return base + pence / 100;
+}
+
+function formatGBPExact(n: number) {
+  const v = jitterPence(n);
+  return (
+    "£" +
+    v.toLocaleString("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
 /* Smoothly count up/down to a target value */
 function useAnimatedNumber(target: number, duration = 280) {
   const [value, setValue] = useState(target);
@@ -266,7 +286,7 @@ const Index = () => {
                 Estimated revenue lost
               </p>
               <p className="text-4xl md:text-5xl font-bold text-gold num-tabular">
-                {formatGBP(aRevLost)}
+                {formatGBPExact(aRevLost)}
               </p>
               <p className="mt-3 text-sm text-foreground/70">{lossLine}</p>
               <p className="mt-6 text-xs text-muted-foreground">
@@ -309,7 +329,7 @@ const Index = () => {
                 Recovered revenue
               </p>
               <p className="text-4xl md:text-5xl font-bold text-gold num-tabular">
-                {formatGBP(aRevRec)}
+                {formatGBPExact(aRevRec)}
               </p>
               <p className="mt-6 text-xs text-muted-foreground">
                 Based on your inputs and typical conversion rates.
@@ -413,7 +433,7 @@ const Index = () => {
       </section>
 
       {/* SECTION 7 — CTA */}
-      <section ref={ctaRef} className="py-24 md:py-32 border-t border-border">
+      <section ref={ctaRef} className="pt-24 md:pt-32 pb-12 md:pb-16 border-t border-border">
         <div className="container max-w-2xl text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance">
             Let's map where your enquiries are leaking.
@@ -488,7 +508,7 @@ const Index = () => {
       </section>
 
       {/* SECTION 8 — Closing */}
-      <section className="py-32 md:py-40">
+      <section className="pt-16 md:pt-20 pb-32 md:pb-40">
         <div className="container max-w-4xl text-center">
           <p className="text-3xl md:text-5xl font-bold text-gold leading-tight text-balance">
             Every hour of delay is revenue you won't get back.
