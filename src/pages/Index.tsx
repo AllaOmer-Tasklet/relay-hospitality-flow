@@ -178,8 +178,9 @@ const Index = () => {
       {/* Nav */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="container flex items-center justify-between py-6">
-          <a href="/" className="flex items-center" aria-label="Tasklet home">
-            <img src={taskletIcon} alt="Tasklet" className="h-10 w-auto" />
+          <a href="/" className="flex items-center gap-[8px]" aria-label="Tasklet home">
+            <img src={taskletIcon} alt="" className="h-6 w-auto" />
+            <span className="text-[18px] font-bold leading-none text-foreground">Tasklet</span>
           </a>
           <button
             onClick={() => scrollTo(ctaRef)}
