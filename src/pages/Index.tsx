@@ -3,6 +3,7 @@ import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, MessageSquare, Phone, Zap, CalendarCheck, MessageCircle, Check } from "lucide-react";
+import taskletLogo from "@/assets/tasklet-logo.png";
 
 const RECOVERY_BASE_RATE = 0.7; // 70% of missed leads
 const WEBHOOK_URL = "https://webhook.tasklet.uk/audit";
@@ -177,8 +178,8 @@ const Index = () => {
       {/* Nav */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="container flex items-center justify-between py-6">
-          <a href="/" className="text-sm font-semibold tracking-wide text-foreground/90">
-            Tasklet
+          <a href="/" className="flex items-center" aria-label="Tasklet home">
+            <img src={taskletLogo} alt="Tasklet" className="h-10 w-auto" />
           </a>
           <button
             onClick={() => scrollTo(ctaRef)}
