@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, MessageSquare, Phone, Zap, CalendarCheck, MessageCircle, Check } from "lucide-react";
 
-const AVG_ENQUIRY_VALUE = 300;
 const RECOVERY_BASE_RATE = 0.7; // 70% of missed leads
 const WEBHOOK_URL = "https://webhook.tasklet.uk/audit";
 
@@ -47,6 +46,7 @@ function useAnimatedNumber(target: number, duration = 280) {
 
 const Index = () => {
   const [enquiries, setEnquiries] = useState(100);
+  const [enquiryValue, setEnquiryValue] = useState(300);
   const [delayHours, setDelayHours] = useState(4);
   const [followUpRate, setFollowUpRate] = useState(20); // %
   const [missRate, setMissRate] = useState(35); // %
