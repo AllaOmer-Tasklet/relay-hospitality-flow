@@ -12,6 +12,26 @@ function formatGBP(n: number) {
   return "£" + Math.round(n).toLocaleString("en-GB");
 }
 
+/* Add deterministic pseudo-random pence (0-99) based on the integer pounds
+   so figures look computed, not estimated. Same input → same pence. */
+function jitterPence(pounds: number) {
+  const base = Math.round(pounds);
+  if (base <= 0) return 0;
+  const pence = ((base * 2654435761) >>> 0) % 100;
+  return base + pence / 100;
+}
+
+function formatGBPExact(n: number) {
+  const v = jitterPence(n);
+  return (
+    "£" +
+    v.toLocaleString("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
 /* Smoothly count up/down to a target value */
 function useAnimatedNumber(target: number, duration = 280) {
   const [value, setValue] = useState(target);
