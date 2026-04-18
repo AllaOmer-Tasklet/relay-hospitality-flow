@@ -5,12 +5,15 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: "email_capture" | "contact_form";
+  type: "email_capture" | "contact_form" | "audit_request";
   email: string;
   name?: string;
   venueName?: string;
   venueType?: string;
   message?: string;
+  monthlyEnquiries?: number;
+  businessType?: string;
+  estimatedLoss?: number;
 }
 
 const NOTIFICATION_EMAIL = "alla@tasklet.uk";
@@ -38,9 +41,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (data.type === "email_capture") {
       subject = `🔔 New interest from ${data.email}`;
       htmlContent = `
-        <h2>Someone dropped their email on Relay</h2>
+        <h2>New email capture</h2>
         <p><strong>Email:</strong> ${data.email}</p>
-        <p><em>Submitted via the email capture form on the homepage.</em></p>
       `;
     } else if (data.type === "contact_form") {
       subject = `📩 Demo request from ${data.name || data.email}`;
@@ -51,6 +53,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
         <p><strong>Venue:</strong> ${data.venueName || "Not provided"}</p>
         <p><strong>Type:</strong> ${data.venueType || "Not provided"}</p>
         ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ""}
+      `;
+    } else if (data.type === "audit_request") {
+      subject = `🧮 Audit request from ${data.name || data.email}`;
+      htmlContent = `
+        <h2>New Audit Request</h2>
+        <p><strong>Name:</strong> ${data.name || "Not provided"}</p>
+        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Business type:</strong> ${data.businessType || "Not provided"}</p>
+        <p><strong>Monthly enquiries:</strong> ${data.monthlyEnquiries ?? "Not provided"}</p>
+        <p><strong>Estimated revenue lost:</strong> £${data.estimatedLoss ?? "Not provided"}</p>
       `;
     } else {
       throw new Error("Invalid notification type");
@@ -63,7 +75,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Relay <onboarding@resend.dev>",
+        from: "Tasklet <onboarding@resend.dev>",
         to: [NOTIFICATION_EMAIL],
         subject,
         html: htmlContent,
@@ -76,8 +88,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       console.error("Resend API error:", result);
       throw new Error(result.message || "Failed to send email");
     }
-
-    console.log("Notification email sent:", result);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
