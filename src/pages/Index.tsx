@@ -286,7 +286,7 @@ const Index = () => {
                 Estimated revenue lost
               </p>
               <p className="text-4xl md:text-5xl font-bold text-gold num-tabular">
-                {formatGBP(aRevLost)}
+                {formatGBPExact(aRevLost)}
               </p>
               <p className="mt-3 text-sm text-foreground/70">{lossLine}</p>
               <p className="mt-6 text-xs text-muted-foreground">
