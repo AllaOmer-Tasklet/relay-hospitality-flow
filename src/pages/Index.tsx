@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, MessageSquare, Phone, Zap, CalendarCheck, MessageCircle, Check } from "lucide-react";
 
-const AVG_ENQUIRY_VALUE = 300;
 const RECOVERY_BASE_RATE = 0.7; // 70% of missed leads
 const WEBHOOK_URL = "https://webhook.tasklet.uk/audit";
 
@@ -47,6 +46,7 @@ function useAnimatedNumber(target: number, duration = 280) {
 
 const Index = () => {
   const [enquiries, setEnquiries] = useState(100);
+  const [enquiryValue, setEnquiryValue] = useState(300);
   const [delayHours, setDelayHours] = useState(4);
   const [followUpRate, setFollowUpRate] = useState(20); // %
   const [missRate, setMissRate] = useState(35); // %
@@ -62,7 +62,7 @@ const Index = () => {
     const delayedShare = Math.min(1, Math.max(0, (delayHours - 0.0833) / 24));
     const delayed = Math.round(responded * delayedShare);
     const lostOpportunities = ignored + Math.round(delayed * 0.6);
-    const revenueLost = lostOpportunities * AVG_ENQUIRY_VALUE;
+    const revenueLost = lostOpportunities * enquiryValue;
 
     // Recovery: 70% of missed (ignored) leads recovered, reduced by delay penalty
     // delay penalty: 3% per hour reduction, capped at 60%
@@ -73,7 +73,7 @@ const Index = () => {
     const newRecovered = ignored * effectiveRecovery;
     const opportunitiesRecovered = Math.max(0, Math.round(newRecovered - currentRecovered));
     const enquiriesCaptured = enquiries - Math.max(0, ignored - opportunitiesRecovered);
-    const recoveredRevenue = opportunitiesRecovered * AVG_ENQUIRY_VALUE;
+    const recoveredRevenue = opportunitiesRecovered * enquiryValue;
 
     return {
       ignored,
@@ -84,7 +84,7 @@ const Index = () => {
       opportunitiesRecovered,
       recoveredRevenue,
     };
-  }, [enquiries, delayHours, followUpRate, missRate]);
+  }, [enquiries, enquiryValue, delayHours, followUpRate, missRate]);
 
   const aIgnored = useAnimatedNumber(calc.ignored);
   const aDelayed = useAnimatedNumber(calc.delayed);
@@ -320,6 +320,17 @@ const Index = () => {
       {/* SECTION 3 — Control sliders */}
       <section className="border-t border-border">
         <div className="container max-w-3xl py-16 md:py-20 space-y-12">
+          <Control
+            label="Average value of a won enquiry"
+            subtext="Used to calculate the revenue figures above."
+            value={enquiryValue}
+            onChange={setEnquiryValue}
+            min={50}
+            max={10000}
+            step={50}
+            display={formatGBP(enquiryValue)}
+            quiet="e.g. £150 restaurant booking · £3,000 wedding · £5,000 property sale."
+          />
           <Control
             label="Response delay"
             subtext="How long before your team typically replies to a new enquiry?"
