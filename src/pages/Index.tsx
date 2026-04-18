@@ -1,217 +1,578 @@
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import Layout from "@/components/layout/Layout";
-import LiveDeployments from "@/components/home/LiveDeployments";
-import HowItWorksSimple from "@/components/home/HowItWorksSimple";
-import SimpleEmailCapture from "@/components/home/SimpleEmailCapture";
-import { ArrowRight, Clock, MessageSquare, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Slider } from "@/components/ui/slider";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Mail, MessageSquare, Phone, Zap, CalendarCheck, MessageCircle, Check } from "lucide-react";
+
+const AVG_ENQUIRY_VALUE = 300;
+const RECOVERY_BASE_RATE = 0.7; // 70% of missed leads
+const WEBHOOK_URL = "https://webhook.tasklet.uk/audit";
+
+function formatGBP(n: number) {
+  return "£" + Math.round(n).toLocaleString("en-GB");
+}
+
+/* Smoothly count up/down to a target value */
+function useAnimatedNumber(target: number, duration = 280) {
+  const [value, setValue] = useState(target);
+  const fromRef = useRef(target);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    fromRef.current = value;
+    startRef.current = null;
+    const from = fromRef.current;
+    const to = target;
+    if (from === to) return;
+
+    const step = (ts: number) => {
+      if (startRef.current === null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const t = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(from + (to - from) * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration]);
+
+  return value;
+}
 
 const Index = () => {
+  const [enquiries, setEnquiries] = useState(100);
+  const [delayHours, setDelayHours] = useState(4);
+  const [followUpRate, setFollowUpRate] = useState(20); // %
+  const [missRate, setMissRate] = useState(35); // %
+
+  const splitRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  /* Calculations */
+  const calc = useMemo(() => {
+    const ignored = Math.round(enquiries * (missRate / 100));
+    const responded = enquiries - ignored;
+    // delayed = responded leads where delay > 1 hour, scaled by delay severity
+    const delayedShare = Math.min(1, Math.max(0, (delayHours - 0.0833) / 24));
+    const delayed = Math.round(responded * delayedShare);
+    const lostOpportunities = ignored + Math.round(delayed * 0.6);
+    const revenueLost = lostOpportunities * AVG_ENQUIRY_VALUE;
+
+    // Recovery: 70% of missed (ignored) leads recovered, reduced by delay penalty
+    // delay penalty: 3% per hour reduction, capped at 60%
+    const delayPenalty = Math.min(0.6, delayHours * 0.03);
+    const effectiveRecovery = Math.max(0, RECOVERY_BASE_RATE - delayPenalty);
+    // Improvement over current follow-up rate
+    const currentRecovered = ignored * (followUpRate / 100);
+    const newRecovered = ignored * effectiveRecovery;
+    const opportunitiesRecovered = Math.max(0, Math.round(newRecovered - currentRecovered));
+    const enquiriesCaptured = enquiries - Math.max(0, ignored - opportunitiesRecovered);
+    const recoveredRevenue = opportunitiesRecovered * AVG_ENQUIRY_VALUE;
+
+    return {
+      ignored,
+      delayed,
+      lostOpportunities,
+      revenueLost,
+      enquiriesCaptured,
+      opportunitiesRecovered,
+      recoveredRevenue,
+    };
+  }, [enquiries, delayHours, followUpRate, missRate]);
+
+  const aIgnored = useAnimatedNumber(calc.ignored);
+  const aDelayed = useAnimatedNumber(calc.delayed);
+  const aLost = useAnimatedNumber(calc.lostOpportunities);
+  const aRevLost = useAnimatedNumber(calc.revenueLost);
+  const aCaptured = useAnimatedNumber(calc.enquiriesCaptured);
+  const aRecovered = useAnimatedNumber(calc.opportunitiesRecovered);
+  const aRevRec = useAnimatedNumber(calc.recoveredRevenue);
+  const aEnquiries = useAnimatedNumber(enquiries);
+
+  const lossLine = useMemo(() => {
+    if (calc.revenueLost < 5000) return "Small leaks add up fast.";
+    if (calc.revenueLost <= 15000) return "This is likely costing you deals every week.";
+    return "At this level, this isn't a leak. It's a system failure.";
+  }, [calc.revenueLost]);
+
+  /* Form */
+  const [formOpen, setFormOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [formEnquiries, setFormEnquiries] = useState<number>(100);
+
+  useEffect(() => {
+    setFormEnquiries(enquiries);
+  }, [enquiries]);
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !businessType.trim()) {
+      toast.error("Please fill in every field.");
+      return;
+    }
+    setSubmitting(true);
+
+    const payload = {
+      name: name.trim(),
+      email: email.trim(),
+      monthlyEnquiries: Number(formEnquiries) || 0,
+      businessType: businessType.trim(),
+      estimatedLoss: Math.round(calc.revenueLost),
+      source: "tasklet.uk audit",
+    };
+
+    // Fire both in parallel: webhook + notification email
+    const webhookPromise = fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch((err) => {
+      console.warn("Webhook POST failed:", err);
+      return null;
+    });
+
+    const emailPromise = supabase.functions.invoke("send-notification", {
+      body: {
+        type: "audit_request",
+        name: payload.name,
+        email: payload.email,
+        businessType: payload.businessType,
+        monthlyEnquiries: payload.monthlyEnquiries,
+        estimatedLoss: payload.estimatedLoss,
+      },
+    });
+
+    const [, emailRes] = await Promise.all([webhookPromise, emailPromise]);
+
+    setSubmitting(false);
+
+    if (emailRes.error) {
+      console.error("Notification error:", emailRes.error);
+      toast.error("Something went wrong. Please try again.");
+      return;
+    }
+
+    setSubmitted(true);
+  };
+
   return (
-    <Layout>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="container py-20 md:py-28">
-          <div className="max-w-3xl mx-auto text-center">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-1.5 text-sm text-muted-foreground mb-6 animate-fade-up">
-              <span className="flex h-2 w-2 rounded-full bg-accent"></span>
-              Now available for hospitality venues
-            </div>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Nav */}
+      <header className="absolute top-0 left-0 right-0 z-20">
+        <div className="container flex items-center justify-between py-6">
+          <a href="/" className="text-sm font-semibold tracking-wide text-foreground/90">
+            Tasklet
+          </a>
+          <button
+            onClick={() => scrollTo(ctaRef)}
+            className="text-sm font-medium text-gold hover:text-gold-soft transition-colors"
+          >
+            Book a call
+          </button>
+        </div>
+      </header>
 
-            {/* Headline */}
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-              Stop Missing Enquiries. Capture Bookings Automatically.
-            </h1>
+      {/* SECTION 1 — Hero */}
+      <section className="relative min-h-screen flex flex-col justify-center">
+        <div className="container max-w-3xl mx-auto text-center pt-28 pb-16">
+          <h1 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight text-balance mb-6">
+            How much is your business losing from missed enquiries?
+          </h1>
+          <p className="text-lg md:text-xl text-foreground/80 mb-3 text-balance">
+            Most businesses think they respond fast. The data says otherwise.
+          </p>
+          <p className="text-sm md:text-base text-muted-foreground mb-12 text-balance">
+            Most businesses lose 20–40% of leads without ever knowing. Find out your number.
+          </p>
 
-            {/* Subheadline */}
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-              A done-for-you enquiry capture and follow-up system for independent hotels and event venues. No missed leads, no manual chasing.
+          <div className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              How many enquiries does your business receive per month?
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up" style={{ animationDelay: "0.3s" }}>
-              <Link to="/contact">
-                <Button variant="cta" size="xl">
-                  Book a Demo
-                  <ArrowRight className="ml-1 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/relay">
-                <Button variant="ctaOutline" size="xl">
-                  Learn About Relay
-                </Button>
-              </Link>
+            <div className="relative">
+              <Slider
+                value={[enquiries]}
+                onValueChange={(v) => setEnquiries(v[0])}
+                min={10}
+                max={1000}
+                step={5}
+                className="max-w-xl mx-auto"
+              />
+              {/* Drifting icons */}
+              <div className="pointer-events-none absolute inset-0 -mx-6 hidden md:block">
+                <Phone className="absolute -top-6 left-2 h-4 w-4 text-muted-foreground/40 animate-fade-in" />
+                <Mail className="absolute -bottom-7 left-1/3 h-4 w-4 text-muted-foreground/40 animate-fade-in" />
+                <MessageCircle className="absolute -top-6 right-6 h-4 w-4 text-muted-foreground/40 animate-fade-in" />
+              </div>
+            </div>
+
+            <div className="text-5xl md:text-6xl font-bold text-gold num-tabular">
+              {Math.round(aEnquiries).toLocaleString("en-GB")}
+            </div>
+
+            <button
+              onClick={() => scrollTo(splitRef)}
+              className="inline-flex items-center justify-center rounded-md bg-gold text-accent-foreground font-semibold px-7 py-3.5 text-base hover:brightness-110 transition-all"
+            >
+              Calculate my lost revenue
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 2 — Split */}
+      <section ref={splitRef} className="border-t border-border">
+        <div className="grid md:grid-cols-2">
+          {/* Loss */}
+          <div className="bg-loss-tint p-8 md:p-14 border-b md:border-b-0 md:border-r border-border">
+            <p className="text-xs uppercase tracking-widest text-loss-label mb-8">
+              What usually happens
+            </p>
+
+            <div className="flex gap-3 mb-10 opacity-60">
+              <Mail className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5" />
+              <Phone className="h-5 w-5" />
+            </div>
+
+            <dl className="space-y-5">
+              <Stat label="Enquiries ignored" value={Math.round(aIgnored).toLocaleString("en-GB")} />
+              <Stat label="Enquiries delayed" value={Math.round(aDelayed).toLocaleString("en-GB")} />
+              <Stat label="Lost opportunities" value={Math.round(aLost).toLocaleString("en-GB")} />
+            </dl>
+
+            <div className="mt-10">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
+                Estimated revenue lost
+              </p>
+              <p className="text-4xl md:text-5xl font-bold text-gold num-tabular">
+                {formatGBP(aRevLost)}
+              </p>
+              <p className="mt-3 text-sm text-foreground/70">{lossLine}</p>
+              <p className="mt-6 text-xs text-muted-foreground">
+                Based on response time, follow-up rate, and industry averages.
+              </p>
+            </div>
+          </div>
+
+          {/* Gain */}
+          <div className="bg-gain-tint p-8 md:p-14">
+            <p className="text-xs uppercase tracking-widest text-gain-label mb-8">
+              What happens with proper follow-up
+            </p>
+
+            <div className="flex gap-3 mb-10">
+              <span className="inline-flex items-center gap-1 text-sm text-gain-label">
+                <Mail className="h-5 w-5" /> <Check className="h-3.5 w-3.5" />
+              </span>
+              <span className="inline-flex items-center gap-1 text-sm text-gain-label">
+                <MessageSquare className="h-5 w-5" /> <Check className="h-3.5 w-3.5" />
+              </span>
+              <span className="inline-flex items-center gap-1 text-sm text-gain-label">
+                <Phone className="h-5 w-5" /> <Check className="h-3.5 w-3.5" />
+              </span>
+            </div>
+
+            <dl className="space-y-5">
+              <Stat
+                label="Enquiries captured"
+                value={Math.round(aCaptured).toLocaleString("en-GB")}
+              />
+              <Stat
+                label="Opportunities recovered"
+                value={Math.round(aRecovered).toLocaleString("en-GB")}
+              />
+            </dl>
+
+            <div className="mt-10">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
+                Recovered revenue
+              </p>
+              <p className="text-4xl md:text-5xl font-bold text-gold num-tabular">
+                {formatGBP(aRevRec)}
+              </p>
+              <p className="mt-6 text-xs text-muted-foreground">
+                Based on your inputs and typical conversion rates.
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Background gradient */}
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,hsl(var(--amber)/0.1),transparent_50%)]"></div>
       </section>
 
-      {/* Live Deployments - Social Proof */}
-      <LiveDeployments />
-
-      {/* Problem Section */}
+      {/* SECTION 3 — Control sliders */}
       <section className="border-t border-border">
-        <div className="container py-20">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              You're not losing enquiries to competitors
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              You're losing them to slow responses, missed emails, and follow-ups that never happen.
-            </p>
-          </div>
+        <div className="container max-w-3xl py-16 md:py-20 space-y-12">
+          <Control
+            label="Response delay"
+            subtext="How long before your team typically replies to a new enquiry?"
+            value={delayHours}
+            onChange={setDelayHours}
+            min={0}
+            max={24}
+            step={0.25}
+            display={delayHours < 1 ? `${Math.round(delayHours * 60)} min` : `${delayHours} hr`}
+            quiet="Enquiries go cold after ~5 minutes."
+          />
+          <Control
+            label="Current follow-up rate"
+            subtext="What percentage of enquiries does your team actively follow up on?"
+            value={followUpRate}
+            onChange={setFollowUpRate}
+            min={0}
+            max={100}
+            step={1}
+            display={`${followUpRate}%`}
+          />
+          <Control
+            label="Enquiry miss rate"
+            subtext="How many enquiries slip through without a response?"
+            value={missRate}
+            onChange={setMissRate}
+            min={5}
+            max={60}
+            step={1}
+            display={`${missRate}%`}
+          />
+          <p className="text-xs text-muted-foreground text-center pt-2">
+            Based on typical response and conversion patterns across service businesses.
+          </p>
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center p-6 rounded-xl bg-card border border-border">
-              <div className="inline-flex items-center justify-center h-12 w-12 rounded-lg bg-destructive/10 text-destructive mb-4">
-                <Clock className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Slow Response Times</h3>
-              <p className="text-sm text-muted-foreground">
-                Enquiries that wait more than an hour are 7x less likely to convert.
-              </p>
-            </div>
+      {/* SECTION 4 — Reframe */}
+      <section className="py-28 md:py-36">
+        <div className="container max-w-3xl text-center">
+          <p className="text-2xl md:text-3xl font-medium text-foreground text-balance">
+            This isn't a marketing problem. It's a response problem.
+          </p>
+        </div>
+      </section>
 
-            <div className="text-center p-6 rounded-xl bg-card border border-border">
-              <div className="inline-flex items-center justify-center h-12 w-12 rounded-lg bg-destructive/10 text-destructive mb-4">
-                <MessageSquare className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Scattered Channels</h3>
-              <p className="text-sm text-muted-foreground">
-                Emails, forms, calls — leads come from everywhere and get lost everywhere.
-              </p>
-            </div>
+      {/* SECTION 5 — Social proof strip */}
+      <section className="bg-secondary/40 border-y border-border">
+        <div className="container py-10 text-center">
+          <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto text-balance">
+            Systems running across multiple service businesses — capturing and following up with
+            every enquiry, around the clock.
+          </p>
+        </div>
+      </section>
 
-            <div className="text-center p-6 rounded-xl bg-card border border-border">
-              <div className="inline-flex items-center justify-center h-12 w-12 rounded-lg bg-destructive/10 text-destructive mb-4">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">No Follow-Up System</h3>
-              <p className="text-sm text-muted-foreground">
-                Busy teams forget to follow up. Interested guests move on.
-              </p>
-            </div>
+      {/* SECTION 6 — How it works */}
+      <section className="py-24">
+        <div className="container max-w-5xl">
+          <div className="grid md:grid-cols-3 gap-12">
+            <Step
+              icon={<MessageSquare className="h-6 w-6" />}
+              title="Enquiry comes in"
+              body="Website form, phone call, Facebook message, Instagram DM. Every channel. Nothing missed."
+            />
+            <Step
+              icon={<Zap className="h-6 w-6" />}
+              title="Response sent instantly"
+              body="The enquirer hears back within seconds. Day or night. No staff involvement required."
+            />
+            <Step
+              icon={<CalendarCheck className="h-6 w-6" />}
+              title="Follow-up runs itself"
+              body="If they don't book, follow-up continues on schedule until they respond or they're marked lost."
+            />
           </div>
         </div>
       </section>
 
-      {/* How It Works - Simple Outcomes */}
-      <HowItWorksSimple />
+      {/* SECTION 7 — CTA */}
+      <section ref={ctaRef} className="py-24 md:py-32 border-t border-border">
+        <div className="container max-w-2xl text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-balance">
+            Let's map where your enquiries are leaking.
+          </h2>
+          <p className="text-lg text-foreground/80 mb-2 text-balance">
+            We'll show you exactly where revenue is being lost and how to recover it.
+          </p>
+          <p className="text-sm text-muted-foreground mb-10">No commitment. No cost.</p>
 
-      {/* Solution Section */}
-      <section className="bg-primary text-primary-foreground">
-        <div className="container py-20">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-1.5 text-sm mb-6">
-              Introducing Relay
-            </div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              Capture every enquiry. Follow up on every lead.
-            </h2>
-            <p className="text-lg text-primary-foreground/80">
-              Relay connects to your existing systems and handles the work your team doesn't have time for.
+          {!formOpen && !submitted && (
+            <button
+              onClick={() => setFormOpen(true)}
+              className="inline-flex items-center justify-center rounded-md bg-gold text-accent-foreground font-semibold px-8 py-4 text-base hover:brightness-110 transition-all w-full sm:w-auto"
+            >
+              Run my free audit
+            </button>
+          )}
+
+          {formOpen && !submitted && (
+            <form
+              onSubmit={handleSubmit}
+              className="mt-2 text-left space-y-4 max-w-md mx-auto animate-fade-in"
+            >
+              <Field
+                label="Name"
+                value={name}
+                onChange={setName}
+                placeholder="Your name"
+                autoFocus
+              />
+              <Field
+                label="Business email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="you@business.com"
+              />
+              <Field
+                label="Monthly enquiries"
+                type="number"
+                value={String(formEnquiries)}
+                onChange={(v) => setFormEnquiries(Number(v) || 0)}
+              />
+              <Field
+                label="Business type"
+                value={businessType}
+                onChange={setBusinessType}
+                placeholder="e.g. estate agent, restaurant, clinic"
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full inline-flex items-center justify-center rounded-md bg-gold text-accent-foreground font-semibold px-6 py-3.5 hover:brightness-110 transition-all disabled:opacity-60"
+              >
+                {submitting ? "Sending…" : "Send my audit request"}
+              </button>
+            </form>
+          )}
+
+          {submitted && (
+            <p className="mt-4 text-foreground/90 animate-fade-in">
+              We'll be in touch within 24 hours with your personalised audit. — Tasklet
             </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-xl p-6">
-              <h3 className="font-semibold text-xl mb-3">Instant Acknowledgment</h3>
-              <p className="text-primary-foreground/70">
-                Every enquiry gets a response within minutes — not hours. Your guests feel heard while your team focuses on bookings.
-              </p>
-            </div>
-
-            <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-xl p-6">
-              <h3 className="font-semibold text-xl mb-3">Intelligent Qualification</h3>
-              <p className="text-primary-foreground/70">
-                Relay gathers dates, group sizes, and requirements upfront. Your team gets qualified leads, not vague questions.
-              </p>
-            </div>
-
-            <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-xl p-6">
-              <h3 className="font-semibold text-xl mb-3">Persistent Follow-Up</h3>
-              <p className="text-primary-foreground/70">
-                No reply? Relay follows up at the right intervals until you get an answer — without being pushy.
-              </p>
-            </div>
-
-            <div className="bg-primary-foreground/5 border border-primary-foreground/10 rounded-xl p-6">
-              <h3 className="font-semibold text-xl mb-3">Works With Your Tools</h3>
-              <p className="text-primary-foreground/70">
-                Connects to your email, forms, and booking systems. No new software for your team to learn.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <Link to="/relay">
-              <Button variant="secondary" size="lg">
-                See How Relay Works
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Who It's For */}
-      <section className="border-t border-border">
-        <div className="container py-20">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Built for venues that run on bookings
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              If your revenue depends on enquiries becoming confirmed bookings, Relay is for you.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {[
-              { name: "Boutique Hotels", desc: "Room bookings & events" },
-              { name: "Wedding Venues", desc: "High-value, long-lead enquiries" },
-              { name: "Lodges & Retreats", desc: "Group bookings & packages" },
-              { name: "Event Restaurants", desc: "Private dining & functions" },
-            ].map((venue) => (
-              <div key={venue.name} className="p-5 rounded-xl bg-card border border-border text-center hover:border-accent/50 hover:shadow-md transition-all">
-                <h3 className="font-semibold text-foreground mb-1">{venue.name}</h3>
-                <p className="text-sm text-muted-foreground">{venue.desc}</p>
-              </div>
-            ))}
-          </div>
+      {/* SECTION 8 — Closing */}
+      <section className="py-32 md:py-40">
+        <div className="container max-w-4xl text-center">
+          <p className="text-3xl md:text-5xl font-bold text-gold leading-tight text-balance">
+            Every hour of delay is revenue you won't get back.
+          </p>
         </div>
       </section>
 
-      {/* Simple Email Capture */}
-
-      {/* Simple Email Capture */}
-      <SimpleEmailCapture />
-
-      {/* Final CTA */}
-      <section className="border-t border-border bg-muted/30">
-        <div className="container py-20">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Stop losing revenue to missed enquiries
-            </h2>
-            <p className="text-lg text-muted-foreground mb-8">
-              See how Relay works for your venue. 15-minute demo, no commitment.
-            </p>
-            <Link to="/contact">
-              <Button variant="cta" size="xl">
-                Book Your Demo
-                <ArrowRight className="ml-1 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
+      {/* SECTION 9 — Footer */}
+      <footer className="border-t border-border py-8">
+        <div className="container text-center text-xs text-muted-foreground">
+          Tasklet © 2026 | contact@tasklet.uk | tasklet.uk
         </div>
-      </section>
-    </Layout>
+      </footer>
+    </div>
   );
 };
+
+/* ---------- helpers ---------- */
+
+const Stat = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-baseline justify-between border-b border-border/50 pb-3">
+    <dt className="text-sm text-muted-foreground">{label}</dt>
+    <dd className="text-2xl md:text-3xl font-semibold text-foreground num-tabular">{value}</dd>
+  </div>
+);
+
+const Control = ({
+  label,
+  subtext,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  display,
+  quiet,
+}: {
+  label: string;
+  subtext: string;
+  value: number;
+  onChange: (n: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  display: string;
+  quiet?: string;
+}) => (
+  <div>
+    <div className="flex items-baseline justify-between mb-1">
+      <label className="text-base font-medium">{label}</label>
+      <span className="text-gold font-semibold num-tabular">{display}</span>
+    </div>
+    <p className="text-sm text-muted-foreground mb-4">{subtext}</p>
+    <Slider
+      value={[value]}
+      onValueChange={(v) => onChange(v[0])}
+      min={min}
+      max={max}
+      step={step}
+    />
+    {quiet && <p className="mt-3 text-xs text-muted-foreground">{quiet}</p>}
+  </div>
+);
+
+const Step = ({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) => (
+  <div>
+    <div className="text-gold mb-4">{icon}</div>
+    <h3 className="text-lg font-semibold mb-2">{title}</h3>
+    <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+  </div>
+);
+
+const Field = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) => (
+  <div>
+    <label className="block text-sm text-muted-foreground mb-1.5">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      className="w-full bg-secondary border border-border rounded-md px-3.5 py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-colors"
+    />
+  </div>
+);
 
 export default Index;
