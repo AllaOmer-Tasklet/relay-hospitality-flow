@@ -3,7 +3,7 @@ import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, MessageSquare, Phone, Zap, CalendarCheck, MessageCircle, Check } from "lucide-react";
-import taskletLogo from "@/assets/tasklet-logo.png";
+import taskletIcon from "@/assets/tasklet-icon.png";
 
 const RECOVERY_BASE_RATE = 0.7; // 70% of missed leads
 const WEBHOOK_URL = "https://webhook.tasklet.uk/audit";
@@ -178,13 +178,8 @@ const Index = () => {
       {/* Nav */}
       <header className="absolute top-0 left-0 right-0 z-20">
         <div className="container flex items-center justify-between py-6">
-          <a href="/" className="flex items-center gap-[10px]" aria-label="Tasklet home">
-            <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M22 14 L8 32 L22 50" stroke="hsl(var(--gold))" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M42 14 L56 32 L42 50" stroke="hsl(var(--gold))" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M37 10 L27 54" stroke="hsl(var(--gold))" strokeWidth="6" strokeLinecap="round" />
-            </svg>
-            <span className="text-[20px] font-bold leading-none text-foreground">Tasklet</span>
+          <a href="/" className="flex items-center" aria-label="Tasklet home">
+            <img src={taskletIcon} alt="Tasklet" className="h-10 w-auto" />
           </a>
           <button
             onClick={() => scrollTo(ctaRef)}
